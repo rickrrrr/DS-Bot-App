@@ -2,11 +2,12 @@ import { createMobileClient } from "./network/client";
 import { useNotifications } from "./hooks/useNotifications";
 import { stopBackgroundNotifications } from './media/background-notifications';
 import { tr } from "./i18n";
-import React, { useEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 import {
   BackHandler,
+  FlatList,
+  LayoutChangeEvent,
   Platform,
-  ScrollView,
   StatusBar,
   Text,
   TextInput,
@@ -29,7 +30,7 @@ import {
 } from "./components/UI";
 import { BotAvatar, mainLook, RoomAvatar } from "./components/BotAvatar";
 import { LaunchIntro } from "./components/LaunchIntro";
-import { MotionProvider, PageTransition } from "./components/Motion";
+import { FadeIn, MotionProvider, PageTransition } from "./components/Motion";
 import { AgentDetails } from "./components/AgentDetails";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { ChatScreen } from "./screens/ChatScreen";
@@ -55,6 +56,100 @@ import {
 } from "./i18n";
 import { conversationTime, orderConversations } from "./logic/conversation-order";
 import { groupWorkMembers, ownBotWork, waitingNames, workDescription } from "./logic/group-work";
+import type { Bot, Room, TeamState } from "./types";
+import type { Theme } from "./theme";
+import { StyleGallery } from "./dev/StyleGallery";
+
+const ConversationListRow = memo(function ConversationListRow({
+  item,
+  bot,
+  room,
+  team,
+  main,
+  active,
+  unread,
+  pinned,
+  lastActivity,
+  needsApproval,
+  workPreview,
+  previewText,
+  locale,
+  theme: t,
+  onOpen,
+  onDetails,
+  onLayout,
+}: {
+  item: Conversation;
+  bot?: Bot;
+  room?: Room;
+  team: TeamState;
+  main: boolean;
+  active: boolean;
+  unread: boolean;
+  pinned: boolean;
+  lastActivity?: number;
+  needsApproval: boolean;
+  workPreview: string;
+  previewText: string;
+  locale: string;
+  theme: Theme;
+  onOpen: () => void;
+  onDetails: () => void;
+  onLayout: (event: LayoutChangeEvent) => void;
+}) {
+  return (
+    <Pressable
+      onLayout={onLayout}
+      accessibilityRole="button"
+      accessibilityLabel={tr("Open {p0}", { p0: String(item.name) })}
+      accessibilityState={{ selected: active }}
+      onPress={onOpen}
+      onLongPress={onDetails}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        paddingHorizontal: 10,
+        paddingVertical: 14,
+        minHeight: 72,
+        borderRadius: 16,
+        backgroundColor: pressed || active ? t.hover : undefined,
+      })}
+    >
+      {bot ? (
+        <BotAvatar bot={bot} size={42} main={main} live={!!item.waiting} />
+      ) : room ? (
+        <RoomAvatar room={room} team={team} size={42} />
+      ) : (
+        <View style={{ width: 42, alignItems: "center" }}>
+          <Icon name="bots" color={t.muted} />
+        </View>
+      )}
+      <View style={{ flex: 1, gap: 3 }}>
+        <Text numberOfLines={1} style={{ color: t.ink, fontWeight: "600", fontSize: 16 }}>
+          {item.name || tr("New conversation")}
+          {needsApproval ? " · " + tr("Waiting for approval") : ""}
+        </Text>
+        <Text numberOfLines={1} style={{ fontSize: 14, lineHeight: 20, color: t.muted }}>
+          {workPreview || previewText}
+        </Text>
+      </View>
+      <View style={{ alignItems: "flex-end", alignSelf: "stretch", justifyContent: "space-between", paddingVertical: 2, gap: 8 }}>
+        {!!lastActivity && (
+          <Text style={{ fontSize: 12, color: t.faint }}>
+            {new Date(lastActivity).toLocaleDateString() === new Date().toLocaleDateString()
+              ? new Date(lastActivity).toLocaleTimeString(locale === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" })
+              : new Date(lastActivity).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" })}
+          </Text>
+        )}
+        {unread
+          ? <View accessibilityLabel={tr("Unread")} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.accent }} />
+          : pinned ? <Icon name="pin" size={13} color={t.muted} /> : null}
+      </View>
+    </Pressable>
+  );
+});
+
 type Route =
   | {
       page: "home";
@@ -89,7 +184,7 @@ function Shell() {
   const [searching, setSearching] = useState(false);
   const [newChat, setNewChat] = useState(false);
   const [query, setQuery] = useState("");
-  const homeList = useRef<ScrollView>(null);
+  const homeList = useRef<FlatList<Conversation>>(null);
   const rowPositions = useRef<Record<string,{y:number;height:number}>>({});
   const [homeScroll,setHomeScroll] = useState(0);
   const [previewState, setPreviewState] = useState<{serverId:string;items:Record<string,Message>} | null>(null);
@@ -339,69 +434,35 @@ function Shell() {
     const main = !!bot && mainIds.includes(bot.id);
     const active = item.id === conversation?.id;
     const lastActivity = conversationTime(item, previews[item.id]);
-    const needsApproval = workspace.team.work?.approvals.some(entry => bot ? entry.botId === bot.id && !entry.roomId : room ? entry.roomId === room.id : false);
+    const needsApproval = !!workspace.team.work?.approvals.some(entry => bot ? entry.botId === bot.id && !entry.roomId : room ? entry.roomId === room.id : false);
     const work = bot ? ownBotWork(bot.id, workspace.team) : room ? groupWorkMembers(room, workspace.team).find(member => member.work)?.work : undefined;
     const names = waitingNames(work);
     const waiting = names.length ? tr("Waiting for {p0}", { p0: names.join(locale === "zh" ? "、" : ", ") }) : "";
     const workPreview = needsApproval ? tr("Waiting for approval") : waiting || (work?.switching ? tr("Moving to a fresh conversation") : workDescription(work) || (work ? tr("Working") : ""));
-      return (
-      <Pressable
-        key={item.id}
-        onLayout={event => {rowPositions.current[item.id]=event.nativeEvent.layout;}}
-        accessibilityRole="button"
-        accessibilityLabel={tr("Open {p0}", { p0: String(item.name) })}
-        accessibilityState={{ selected: active }}
-        onPress={() => choose(item.id)}
-        onLongPress={() => {
-          setSelected(item.id);
-          details(item);
-        }}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 18,
-          paddingHorizontal: 8,
-          paddingVertical: 24,
-          minHeight: 92,
-          borderRadius: 22,
-          backgroundColor: pressed ? t.hover : undefined,
-        })}
-      >
-        {bot ? (
-          <BotAvatar bot={bot} size={50} main={main} live={!!item.waiting} />
-        ) : room ? (
-          <RoomAvatar room={room} team={workspace.team} size={50} />
-        ) : (
-          <View style={{ width: 50, alignItems: "center" }}>
-            <Icon name="bots" color={t.muted} />
-          </View>
-        )}
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text
-            numberOfLines={1}
-            style={{
-              color: t.ink,
-              fontWeight: "600",
-              fontSize: 20,
-            }}
-          >
-            {item.name || tr("New conversation")}
-            {needsApproval ? " · " + tr("Waiting for approval") : ""}
-          </Text>
-          <Text numberOfLines={1} style={{fontSize:17,lineHeight:24,color:t.muted}}>
-            {workPreview || previews[item.id]?.text.replace(/\s+/g," ").trim() || (previews[item.id]?.attachments?.length ? tr("Attachment message") : "") || (typeof item.preview === "string" && item.preview) ||
-              (item.waiting ? tr("Waiting for your answer") : bot?.role || (room ? room.members.map(id => workspace.team.bots.find(b => b.id === id)?.name || id).join(" · ") : tr("DSH Agent")))}
-          </Text>
-        </View>
-        <View style={{alignItems:"flex-end",alignSelf:"stretch",justifyContent:"space-between",paddingVertical:4,gap:10}}>
-          {!!lastActivity && <Text style={{fontSize:14,color:t.muted}}>{new Date(lastActivity).toLocaleDateString() === new Date().toLocaleDateString()
-            ? new Date(lastActivity).toLocaleTimeString(locale === "zh" ? "zh-CN" : "en-US",{hour:"2-digit",minute:"2-digit"})
-            : new Date(lastActivity).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US",{month:"short",day:"numeric"})}</Text>}
-          {notificationInbox?.items.some(event => !event.read && (event.conversationId === item.id || item.id === `bot:${event.conversationId}` || item.id === `room:${event.conversationId}`))
-            ? <View accessibilityLabel={tr("Unread")} style={{width:11,height:11,borderRadius:6,backgroundColor:t.accent}}/>
-            : (item.pinned || bot?.pinned || room?.pinned) ? <Icon name="pin" size={14} color={t.muted}/> : null}
-        </View>
-      </Pressable>
+    const previewText = previews[item.id]?.text.replace(/\s+/g, " ").trim()
+      || (previews[item.id]?.attachments?.length ? tr("Attachment message") : "")
+      || (typeof item.preview === "string" && item.preview)
+      || (item.waiting ? tr("Waiting for your answer") : bot?.role || (room ? room.members.map(id => workspace.team.bots.find(b => b.id === id)?.name || id).join(" · ") : tr("DSH Agent")));
+    return (
+      <ConversationListRow
+        item={item}
+        bot={bot}
+        room={room}
+        team={workspace.team}
+        main={main}
+        active={active}
+        unread={unread(item)}
+        pinned={!!(item.pinned || bot?.pinned || room?.pinned)}
+        lastActivity={lastActivity || undefined}
+        needsApproval={needsApproval}
+        workPreview={workPreview}
+        previewText={previewText || ""}
+        locale={locale}
+        theme={t}
+        onOpen={() => choose(item.id)}
+        onDetails={() => { setSelected(item.id); details(item); }}
+        onLayout={event => { rowPositions.current[item.id] = event.nativeEvent.layout; }}
+      />
     );
   }
   return (
@@ -439,12 +500,42 @@ function Shell() {
             </View>
             {searching && <View style={{marginHorizontal:20,marginTop:90,marginBottom:12,borderRadius:25,backgroundColor:t.hover,paddingHorizontal:18}}><TextInput accessibilityLabel={tr("Search conversations")} placeholder={tr("Search conversations")} placeholderTextColor={t.faint} value={query} onChangeText={setQuery} style={{color:t.ink,fontSize:17,minHeight:48}}/></View>}
             <Notice error text={workspace.error || error}/>
-            {!searching && homeScroll > 120 && unreadAbove.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel={tr("{count} unread",{count:unreadAbove.length})} onPress={() => {const first=unreadAbove[0];homeList.current?.scrollTo({y:Math.max(0,rowPositions.current[first.id].y-110),animated:true});}} style={{position:"absolute",top:88,alignSelf:"center",zIndex:3,backgroundColor:t.accent,borderRadius:24,paddingHorizontal:14,minHeight:44,flexDirection:"row",alignItems:"center",gap:6}}><Icon name="up" size={18} color={t.accentText}/><Text style={{fontSize:18,fontWeight:"600",color:t.accentText}}>{tr("{count} unread",{count:unreadAbove.length})}</Text></Pressable>}
-            <ScrollView ref={homeList} onScroll={event => setHomeScroll(event.nativeEvent.contentOffset.y)} scrollEventThrottle={80} contentContainerStyle={{paddingHorizontal:16,paddingTop:searching ? 0 : 80,paddingBottom:24}} keyboardShouldPersistTaps="handled">
-              {!query && chief && !classic && <Pressable accessibilityRole="button" accessibilityLabel={tr("Open {p0}",{p0:chief.name})} onPress={() => choose(chief.id)} onLongPress={() => {const item=workspace.conversations.find(c=>c.sessionId===chief.sessionId);if(item)details(item);}} style={{alignItems:"center",paddingTop:24,paddingBottom:28,gap:12}}><BotAvatar bot={chief} size={100}/><Text style={{fontSize:16,color:t.muted}}>{chief.name}</Text></Pressable>}
-              {sorted.map(conversationRow)}
-              {!sorted.length && <View style={{padding:24,gap:16}}><Label muted>{tr("No conversations found.")}</Label>{classic ? <Button title={tr("New DSH Agent")} disabled={creating || !workspace.online} onPress={addAgent}/> : <Button secondary title={tr("Reconnect")} onPress={workspace.refresh}/>}</View>}
-            </ScrollView>
+            {!searching && homeScroll > 120 && unreadAbove.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel={tr("{count} unread",{count:unreadAbove.length})} onPress={() => {const first=unreadAbove[0];homeList.current?.scrollToOffset({offset:Math.max(0,rowPositions.current[first.id].y-110),animated:true});}} style={{position:"absolute",top:88,alignSelf:"center",zIndex:3,backgroundColor:t.accent,borderRadius:24,paddingHorizontal:14,minHeight:44,flexDirection:"row",alignItems:"center",gap:6}}><Icon name="up" size={18} color={t.accentText}/><Text style={{fontSize:16,fontWeight:"600",color:t.accentText}}>{tr("{count} unread",{count:unreadAbove.length})}</Text></Pressable>}
+            <FlatList
+              ref={homeList}
+              data={sorted}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => conversationRow(item)}
+              onScroll={event => setHomeScroll(event.nativeEvent.contentOffset.y)}
+              scrollEventThrottle={80}
+              contentContainerStyle={{ paddingHorizontal: 12, paddingTop: searching ? 0 : 76, paddingBottom: 28, flexGrow: 1 }}
+              keyboardShouldPersistTaps="handled"
+              ListHeaderComponent={!query && chief && !classic ? (
+                <FadeIn>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={tr("Open {p0}", { p0: chief.name })}
+                    onPress={() => choose(chief.id)}
+                    onLongPress={() => {
+                      const item = workspace.conversations.find(c => c.sessionId === chief.sessionId);
+                      if (item) details(item);
+                    }}
+                    style={{ alignItems: "center", paddingTop: 20, paddingBottom: 20, gap: 10 }}
+                  >
+                    <BotAvatar bot={chief} size={84} />
+                    <Text style={{ fontSize: 14, color: t.muted }}>{chief.name}</Text>
+                  </Pressable>
+                </FadeIn>
+              ) : null}
+              ListEmptyComponent={
+                <View style={{ padding: 24, gap: 16 }}>
+                  <Label muted>{tr("No conversations found.")}</Label>
+                  {classic
+                    ? <Button title={tr("New DSH Agent")} disabled={creating || !workspace.online} onPress={addAgent} />
+                    : <Button secondary title={tr("Reconnect")} onPress={workspace.refresh} />}
+                </View>
+              }
+            />
           </View>
         ) : route.page === "chat" ? (
           conversation ? (
@@ -560,7 +651,24 @@ function Shell() {
     </SafeAreaView>
   );
 }
+
+function galleryRequested() {
+  if (Platform.OS !== "web" || typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).get("gallery") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
+  if (galleryRequested()) {
+    return (
+      <SafeAreaProvider>
+        <StyleGallery />
+      </SafeAreaProvider>
+    );
+  }
   return (
     <SafeAreaProvider>
       <MotionProvider><Shell /></MotionProvider>

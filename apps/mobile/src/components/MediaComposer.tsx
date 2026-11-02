@@ -300,11 +300,29 @@ export function MediaComposer({
       )}
       <Notice capsule text={busy} />
       <Notice capsule error text={error} />
-      <View pointerEvents="box-none" style={{flexDirection:"row",alignItems:"flex-end",gap:10}}>
-        <View pointerEvents="box-none" style={{height:48,justifyContent:"center"}}><IconButton name="plus" label={tr("Attach")} floating size={48} disabled={disabled || !!busy || state.isRecording}
-          onPress={() => {Keyboard.dismiss();setError("");setOpen(true);}}/>
+      <View pointerEvents="box-none" style={{
+        flexDirection: "row",
+        alignItems: "flex-end",
+        minHeight: 52,
+        borderRadius: 28,
+        borderWidth: 1,
+        borderColor: t.line,
+        backgroundColor: t.surface,
+        paddingLeft: 4,
+        paddingRight: 4,
+        paddingVertical: 4,
+        gap: 2,
+      }}>
+        <View pointerEvents="box-none" style={{ height: 44, justifyContent: "center" }}>
+          <IconButton
+            name="plus"
+            label={tr("Attach")}
+            size={44}
+            disabled={disabled || !!busy || state.isRecording}
+            onPress={() => { Keyboard.dismiss(); setError(""); setOpen(true); }}
+          />
         </View>
-        <View pointerEvents="box-none" style={{flex:1,flexDirection:"row",alignItems:"flex-end",minHeight:48,borderRadius:24,borderWidth:1,borderColor:t.line,backgroundColor:t.surface,padding:1,gap:2}}>
+        <View pointerEvents="box-none" style={{ flex: 1, flexDirection: "row", alignItems: "flex-end", minHeight: 44, gap: 2 }}>
           {children}
         </View>
       </View>

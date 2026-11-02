@@ -1,103 +1,122 @@
-import { BRAND_BLUE, contrastText } from "./logic/colors";
+import { contrastText } from "./logic/colors";
 export { luminance, contrastText } from "./logic/colors";
 import { useSyncExternalStore } from "react";
 import { useColorScheme } from "react-native";
 
-// Base themes follow the host; mobile chat colors are shared across presets.
+// Soft neutral surfaces, near-black dark default, one restrained accent.
+// Host accent preference overrides the quiet palette accent when set.
 export const THEMES = {
   deepseek: {
     name: "DeepSeek",
     light: [
-      "#fcfcfc",
-      "#f7f7f7",
-      "#eeeeee",
+      "#f7f7f5",
+      "#efefed",
+      "#e6e6e3",
       "#ffffff",
-      "#141414",
-      "#070707",
-      "#fcfcfc",
-      BRAND_BLUE,
+      "#121212",
+      "#1a1a1a",
+      "#f7f7f5",
+      "#2a2a2a",
     ],
     dark: [
-      "#141414",
-      "#1b1b1b",
-      "#262626",
-      "#1f1f1f",
-      "#f2f2f2",
-      "#f2f2f2",
-      "#141414",
-      BRAND_BLUE,
+      "#050505",
+      "#0c0c0c",
+      "#1c1c1c",
+      "#121212",
+      "#f2f2f0",
+      "#f2f2f0",
+      "#050505",
+      "#e8e8e6",
     ],
   },
   mono: {
     name: "Mono",
     light: [
-      "#ffffff",
-      "#f9f9f9",
-      "#f0f0f0",
+      "#fafafa",
+      "#f2f2f2",
+      "#e8e8e8",
       "#ffffff",
       "#0d0d0d",
       "#0d0d0d",
-      "#ffffff",
+      "#fafafa",
       "#0d0d0d",
     ],
     dark: [
-      "#0f0f0f",
-      "#171717",
-      "#242424",
-      "#1c1c1c",
+      "#000000",
+      "#0a0a0a",
+      "#1a1a1a",
+      "#111111",
       "#f4f4f4",
       "#f4f4f4",
-      "#0f0f0f",
+      "#000000",
       "#f4f4f4",
     ],
   },
   paper: {
     name: "Paper",
     light: [
-      "#faf9f5",
-      "#f3f0e8",
-      "#ebe7dc",
+      "#f6f5f2",
+      "#eeede8",
+      "#e5e3dc",
       "#ffffff",
-      "#1f1e1b",
-      "#2b2a26",
-      "#faf9f5",
-      "#d97757",
+      "#1c1b18",
+      "#2a2925",
+      "#f6f5f2",
+      "#3a3934",
     ],
     dark: [
-      "#1f1e1b",
-      "#262521",
-      "#34322d",
-      "#2a2925",
-      "#f3f0e8",
-      "#f3f0e8",
-      "#1f1e1b",
-      "#e08a6d",
+      "#0a0a08",
+      "#121210",
+      "#22221e",
+      "#161614",
+      "#f0efe9",
+      "#f0efe9",
+      "#0a0a08",
+      "#e6e4dc",
     ],
   },
   moonlight: {
     name: "Moonlight",
     light: [
-      "#f7f9fc",
-      "#eef2f8",
-      "#e5ebf5",
+      "#f5f6f8",
+      "#eceef2",
+      "#e2e5eb",
       "#ffffff",
-      "#121826",
-      "#1e3a8a",
-      "#ffffff",
-      BRAND_BLUE,
+      "#12151c",
+      "#1a2030",
+      "#f5f6f8",
+      "#2c3548",
     ],
     dark: [
-      "#0b1020",
-      "#10172a",
-      "#1a2340",
-      "#141c33",
-      "#e8edf7",
-      "#3b6fd8",
-      "#ffffff",
-      BRAND_BLUE,
+      "#06070a",
+      "#0d0f14",
+      "#1a1e28",
+      "#12151c",
+      "#e8ebf2",
+      "#e8ebf2",
+      "#06070a",
+      "#c9d0de",
     ],
   },
 };
+
+export const SPACE = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 28,
+} as const;
+
+export const TYPE = {
+  caption: { fontSize: 12, lineHeight: 17, fontWeight: "400" as const },
+  body: { fontSize: 16, lineHeight: 24, fontWeight: "400" as const },
+  bodyLarge: { fontSize: 17, lineHeight: 26, fontWeight: "400" as const },
+  title: { fontSize: 20, lineHeight: 26, fontWeight: "600" as const },
+  display: { fontSize: 28, lineHeight: 34, fontWeight: "600" as const },
+} as const;
+
 let preferences: Record<string, unknown> = {};
 const listeners = new Set<() => void>();
 const subscribe = (callback: () => void) => {
@@ -127,7 +146,7 @@ export function useTheme() {
     () => preferences,
   );
   const key =
-    typeof prefs.theme === "string" && Object.hasOwn(THEMES,prefs.theme)
+    typeof prefs.theme === "string" && Object.hasOwn(THEMES, prefs.theme)
       ? (prefs.theme as keyof typeof THEMES)
       : "deepseek";
   const [bg, sidebar, bubble, surface, ink, user, userText, baseAccent] =
@@ -141,26 +160,29 @@ export function useTheme() {
     bg,
     sidebar,
     bubble,
-    messageBubble: dark ? "#333333" : "#EDF3FE",
-    messageText: dark ? "#FFFFFF" : "#141414",
+    // User chat pills: soft elevated grey, not a saturated tint.
+    messageBubble: dark ? "#262626" : "#e8e8e6",
+    messageText: dark ? "#f5f5f3" : "#121212",
     surface,
     ink,
     user,
     userText,
     accent,
-    link: dark ? "#91aeff" : "#2858b4",
+    link: dark ? "#a8b4cc" : "#3a4a66",
     accentText: contrastText(accent),
-    muted: alpha(ink, 0.6),
-    faint: alpha(ink, 0.36),
+    muted: alpha(ink, 0.58),
+    faint: alpha(ink, 0.34),
     line: alpha(ink, 0.08),
-    lineStrong: alpha(ink, 0.15),
-    hover: dark ? "rgba(160,160,160,.12)" : "rgba(119,119,119,.09)",
-    active: dark ? "rgba(160,160,160,.2)" : "rgba(119,119,119,.17)",
-    soft: alpha(accent, 0.1),
+    lineStrong: alpha(ink, 0.14),
+    hover: dark ? "rgba(160,160,160,.10)" : "rgba(80,80,80,.07)",
+    active: dark ? "rgba(160,160,160,.18)" : "rgba(80,80,80,.14)",
+    soft: alpha(accent, 0.12),
     tagBg: alpha(ink, dark ? 0.09 : 0.06),
-    tagInk: alpha(ink, 0.58),
-    error: dark ? "#ff7078" : "#c93942",
+    tagInk: alpha(ink, 0.55),
+    error: dark ? "#ff7a82" : "#c93942",
     motion: typeof prefs.motion === "string" ? prefs.motion : "normal",
+    space: SPACE,
+    type: TYPE,
   };
 }
 export type Theme = ReturnType<typeof useTheme>;
