@@ -58,6 +58,7 @@ import { conversationTime, orderConversations } from "./logic/conversation-order
 import { groupWorkMembers, ownBotWork, waitingNames, workDescription } from "./logic/group-work";
 import type { Bot, Room, TeamState } from "./types";
 import type { Theme } from "./theme";
+import { StyleGallery } from "./dev/StyleGallery";
 
 const ConversationListRow = memo(function ConversationListRow({
   item,
@@ -650,7 +651,24 @@ function Shell() {
     </SafeAreaView>
   );
 }
+
+function galleryRequested() {
+  if (Platform.OS !== "web" || typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).get("gallery") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
+  if (galleryRequested()) {
+    return (
+      <SafeAreaProvider>
+        <StyleGallery />
+      </SafeAreaProvider>
+    );
+  }
   return (
     <SafeAreaProvider>
       <MotionProvider><Shell /></MotionProvider>
