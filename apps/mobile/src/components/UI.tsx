@@ -1,7 +1,6 @@
 import { tr } from "../i18n";
 import React, { useEffect } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   BackHandler,
@@ -14,9 +13,8 @@ import {
   View,
   Switch,
 } from "react-native";
-import { AnimatedPressable as Pressable, PageTransition } from "./Motion";
+import { AnimatedPressable as Pressable, PageTransition, PulsingDots } from "./Motion";
 import { contrastText, useTheme } from "../theme";
-import { BRAND_BLUE } from "../logic/colors";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,9 +32,9 @@ export function Label({
     <Text
       style={{
         color: muted ? t.muted : t.ink,
-        fontSize: large ? 19 : 14,
+        fontSize: large ? 18 : 14,
         fontWeight: large ? "600" : "400",
-        lineHeight: large ? 26 : 21,
+        lineHeight: large ? 24 : 20,
       }}
     >
       {children}
@@ -172,9 +170,9 @@ export function Card({ children }: { children: React.ReactNode }) {
     <View
       style={{
         backgroundColor: t.surface,
-        borderRadius: 18,
-        padding: 16,
-        gap: 12,
+        borderRadius: 14,
+        padding: 14,
+        gap: 10,
         borderWidth: 1,
         borderColor: t.line,
       }}
@@ -188,13 +186,13 @@ export function Busy({ text = "Loading…" }: { text?: string }) {
   return (
     <View
       style={{
-        padding: 22,
-        flexDirection: "row",
-        gap: 12,
+        padding: 28,
+        gap: 14,
+        alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <ActivityIndicator color={t.accent} />
+      <PulsingDots color={t.muted} />
       <Label muted>{tr(text)}</Label>
     </View>
   );
@@ -272,7 +270,7 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  page: { padding: 16, gap: 20, paddingBottom: 24 },
+  page: { padding: 18, gap: 16, paddingBottom: 28 },
   caption: { fontSize: 12 },
   grow: { flex: 1 },
 });
@@ -295,13 +293,16 @@ export function IconButton({ name, label, onPress, disabled = false, floating = 
   name: IconName; label: string; onPress: () => void; disabled?: boolean; floating?: boolean; primary?: boolean; brand?: boolean; size?: number; width?: number;
 }) {
   const t = useTheme();
+  // primary/brand send control uses the quiet theme accent (near ink), not a loud brand fill.
+  const fill = brand || primary ? t.accent : floating ? t.surface : undefined;
+  const glyph = brand || primary ? t.accentText : t.ink;
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled}}
     disabled={disabled} onPress={onPress} style={({pressed}) => ({
       width, height:size, borderRadius:size / 2, alignItems:"center", justifyContent:"center",
-      flexShrink:0, backgroundColor:brand ? BRAND_BLUE : primary ? t.ink : floating ? t.surface : pressed ? t.hover : undefined,
-      borderWidth:floating && !primary ? 1 : 0, borderColor:t.line,
+      flexShrink:0, backgroundColor: fill || (pressed ? t.hover : undefined),
+      borderWidth:floating && !primary && !brand ? 1 : 0, borderColor:t.line,
       opacity:disabled ? .35 : pressed ? .65 : 1,
-    })}><Icon name={name} size={name === "plus" ? 28 : 23} color={brand ? "#FFFFFF" : primary ? t.bg : t.ink}/></Pressable>;
+    })}><Icon name={name} size={name === "plus" ? 24 : name === "send" ? 20 : 22} color={glyph}/></Pressable>;
 }
 export function PageHeader({
   title,
@@ -386,7 +387,7 @@ export function Section({
       <View
         style={{
           backgroundColor: t.hover,
-          borderRadius: 22,
+          borderRadius: 16,
           overflow: "hidden",
         }}
       >
@@ -438,14 +439,14 @@ export function SettingRow({
         <Text
           style={{
             color: danger ? t.error : t.ink,
-            fontSize: 19,
-            lineHeight: 26,
+            fontSize: 16,
+            lineHeight: 22,
           }}
         >
           {title}
         </Text>
         {hint && (
-          <Text style={{ color: t.muted, fontSize: 14, lineHeight: 20 }}>
+          <Text style={{ color: t.muted, fontSize: 13, lineHeight: 18 }}>
             {hint}
           </Text>
         )}

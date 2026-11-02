@@ -137,9 +137,9 @@ export function PairingScreen({
         },
       ]}
     >
-      <View style={{ alignItems: "center", gap: 12, paddingBottom: 12 }}>
-        <BotAvatar bot={mainLook} size={72} />
-        <Text style={{ color: t.ink, fontSize: 28, fontWeight: "600" }}>
+      <View style={{ alignItems: "center", gap: 10, paddingBottom: 16 }}>
+        <BotAvatar bot={mainLook} size={64} />
+        <Text style={{ color: t.ink, fontSize: 26, fontWeight: "600", letterSpacing: -0.3 }}>
           {tr("DS Bot")}</Text>
         <Label muted>{tr("Connect to your Bot team.")}</Label>
       </View>

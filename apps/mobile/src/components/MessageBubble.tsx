@@ -1,9 +1,9 @@
 import { systemEventLabel } from "../logic/system-events";
 import { ToolResultView } from "./ToolResultView";
 import { tr } from "../i18n";
-import React, { useEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, Keyboard, Platform, Share, Text, View } from "react-native";
-import { AnimatedPressable as Pressable } from "./Motion";
+import { AnimatedPressable as Pressable, PulsingDots } from "./Motion";
 import * as Clipboard from "expo-clipboard";
 import * as Speech from "expo-speech";
 import { File, Paths } from "expo-file-system";
@@ -80,7 +80,7 @@ function ImageAttachment({ attachment, message, client, conversationId }: {
   </View>;
 }
 
-export function MessageBubble({ message, client, conversationId, serverId, bot, bots, showAuthor = false, onReply, onOpenBot }: {
+function MessageBubbleView({ message, client, conversationId, serverId, bot, bots, showAuthor = false, onReply, onOpenBot }: {
   message: Message;
   client: MobileClient;
   conversationId: string;
@@ -148,37 +148,53 @@ export function MessageBubble({ message, client, conversationId, serverId, bot, 
     if (hideQuestionReceipt(tool)) return null;
     const label = tr(toolLabel(tool));
     const failed = tool.state === "error" || tool.isError;
-    return <View style={{ marginVertical: 6, alignSelf: "flex-start", maxWidth: "94%" }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={label + tr(" details")} accessibilityState={{ expanded }} onPress={() => setExpanded(true)} style={({pressed}) => ({ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1, borderColor: failed ? t.error : t.line, backgroundColor: pressed ? t.hover : t.surface })}>
-        {tool.state === "running" ? <ActivityIndicator size="small" color={t.muted} /> : <Icon name={failed ? "close" : "check"} size={16} color={failed ? t.error : t.muted}/>}
-        <Text numberOfLines={1} style={{ color: t.ink, fontSize: 14, flexShrink: 1 }}>{label}</Text>
-        <Text style={{color:failed ? t.error : t.muted,fontSize:12}}>{tr(failed ? "Failed" : tool.state === "running" ? "Running" : "Completed")}</Text>
-        <Icon name="chevron" size={16} color={t.muted}/>
+    return <View style={{ marginVertical: 4, alignSelf: "stretch", maxWidth: "100%" }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={label + tr(" details")} accessibilityState={{ expanded }} onPress={() => setExpanded(true)} style={({pressed}) => ({ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 40, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: failed ? t.error : t.line, backgroundColor: pressed ? t.hover : t.surface })}>
+        {tool.state === "running" ? <ActivityIndicator size="small" color={t.muted} /> : <Icon name={failed ? "close" : "check"} size={14} color={failed ? t.error : t.muted}/>}
+        <Text numberOfLines={1} style={{ color: t.ink, fontSize: 13, flexShrink: 1, flexGrow: 1 }}>{label}</Text>
+        <Text style={{color:failed ? t.error : t.muted,fontSize:11}}>{tr(failed ? "Failed" : tool.state === "running" ? "Running" : "Completed")}</Text>
+        <Icon name="chevron" size={14} color={t.muted}/>
       </Pressable>
       <Sheet title={label} visible={expanded} onClose={() => setExpanded(false)}><ToolResultView tool={tool} /></Sheet>
     </View>;
   }
   if (message.role === "system") return <Text selectable style={{ color: t.muted, fontSize: 12, lineHeight: 19, textAlign: "center", marginVertical: 12 }}>{systemEventLabel(message.systemEvent, tr) || message.text}</Text>;
-  return <View style={{ alignSelf: mine ? "flex-end" : "stretch", width: "100%", maxWidth: "100%", marginVertical: 10, gap: 4 }}>
-    {showAuthor && !mine && bot ? <Pressable disabled={!onOpenBot} onPress={() => onOpenBot?.(bot.id)} accessibilityRole="button" accessibilityLabel={tr("Open ") + author + tr("'s chat")} style={{flexDirection:"row",alignItems:"center",gap:8,minHeight:44,alignSelf:"flex-start"}}><BotAvatar bot={bot} size={28}/><Text style={{color:t.muted,fontSize:13}}>{author}</Text></Pressable> : showAuthor && !mine && message.author ? <Text style={{color:t.muted,fontSize:13}}>{author}</Text> : null}
+  return <View style={{ alignSelf: mine ? "flex-end" : "stretch", width: "100%", maxWidth: "100%", marginVertical: mine ? 6 : 10, gap: 4 }}>
+    {showAuthor && !mine && bot ? <Pressable disabled={!onOpenBot} onPress={() => onOpenBot?.(bot.id)} accessibilityRole="button" accessibilityLabel={tr("Open ") + author + tr("'s chat")} style={{flexDirection:"row",alignItems:"center",gap:8,minHeight:36,alignSelf:"flex-start"}}><BotAvatar bot={bot} size={24}/><Text style={{color:t.muted,fontSize:12}}>{author}</Text></Pressable> : showAuthor && !mine && message.author ? <Text style={{color:t.muted,fontSize:12}}>{author}</Text> : null}
     {message.reasoning ? <View style={{ marginLeft: 0, gap: 5 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={tr("Thinking details")} accessibilityState={{ expanded: thinking }} onPress={() => setThinking(!thinking)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: t.muted, fontSize: 13 }}>{thinking ? "⌃" : "⌄"} {message.pending ? tr("Thinking…") : tr("Thought process")}</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={tr("Thinking details")} accessibilityState={{ expanded: thinking }} onPress={() => setThinking(!thinking)} style={{ minHeight: 36, justifyContent: "center" }}><Text style={{ color: t.muted, fontSize: 13 }}>{thinking ? "⌃" : "⌄"} {message.pending ? tr("Thinking…") : tr("Thought process")}</Text></Pressable>
       {thinking ? <View style={{ borderLeftWidth: 2, borderColor: t.line, paddingLeft: 10 }}><Text selectable style={{ color: t.muted, fontSize: 13, lineHeight: 20 }}>{message.reasoning}</Text></View> : null}
     </View> : null}
-    {!!message.text || !!message.attachments?.length || (message.pending && !message.reasoning) ? <View style={{ flexDirection: mine ? "row-reverse" : "row", alignItems: "flex-end", gap: 8, justifyContent: "flex-start" }}>
-      <Pressable accessible={false} onLongPress={() => !message.pending && openActions()} delayLongPress={350} style={{ maxWidth: mine ? "90%" : "88%", flexShrink: 1, backgroundColor: mine ? t.messageBubble : t.bubble, borderRadius: 26, paddingHorizontal: 18, paddingVertical: 13, gap: 10 }}>
-        {!!message.text ? <MarkdownText onLongPress={!message.pending ? () => openActions() : undefined} fontSize={18} text={message.text} bots={bots} selfId={mine ? undefined : bot?.id} color={mine ? t.messageText : t.ink} onLink={url => {
+    {!!message.text || !!message.attachments?.length || (message.pending && !message.reasoning) ? <View style={{ flexDirection: mine ? "row-reverse" : "row", alignItems: "flex-end", gap: 8, justifyContent: mine ? "flex-end" : "flex-start" }}>
+      <Pressable accessible={false} onLongPress={() => !message.pending && openActions()} delayLongPress={350} style={mine ? {
+        maxWidth: "86%",
+        flexShrink: 1,
+        backgroundColor: t.messageBubble,
+        borderRadius: 22,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        gap: 8,
+      } : {
+        width: "100%",
+        flexShrink: 1,
+        backgroundColor: "transparent",
+        borderRadius: 0,
+        paddingHorizontal: 2,
+        paddingVertical: 2,
+        gap: 10,
+      }}>
+        {!!message.text ? <MarkdownText onLongPress={!message.pending ? () => openActions() : undefined} fontSize={mine ? 16 : 17} text={message.text} bots={bots} selfId={mine ? undefined : bot?.id} color={mine ? t.messageText : t.ink} onLink={url => {
           if (!url.startsWith("https://bots.local/")) return false;
           try { const id = decodeURIComponent(url.slice("https://bots.local/".length)); if (bots?.some(item => item.id === id)) onOpenBot?.(id); } catch {}
           return true;
-        }} /> : message.pending && !message.reasoning ? <Text style={{ color: t.muted, fontSize: 13 }}>{tr("Thinking…")}</Text> : null}
+        }} /> : message.pending && !message.reasoning ? <View style={{ paddingVertical: 4 }}><PulsingDots color={t.muted} /></View> : null}
         {message.attachments?.map((attachment, index) => attachment.type === "image" ? <ImageAttachment key={attachment.id || index} attachment={attachment} message={message} client={client} conversationId={conversationId} /> : <FileAttachment key={attachment.id || index} attachment={attachment} message={message} client={client} conversationId={conversationId} color={mine ? t.messageText : undefined} />)}
       </Pressable>
 
     </View> : null}
     {message.interrupted ? <Text style={{ color: t.muted, fontSize: 12, marginLeft: 0 }}>{tr("Stopped")}</Text> : null}
     {!!reactions.length ? <View style={{ flexDirection: "row", gap: 4, justifyContent: mine ? "flex-end" : "flex-start" }}>
-      {reactions.map(emoji => <Pressable key={emoji} accessibilityRole="button" accessibilityLabel={tr("Remove reaction ") + emoji} onPress={() => react(emoji)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: t.bubble }}><Text>{emoji}</Text></Pressable>)}
+      {reactions.map(emoji => <Pressable key={emoji} accessibilityRole="button" accessibilityLabel={tr("Remove reaction ") + emoji} onPress={() => react(emoji)} style={{ minWidth: 40, minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: t.surface, borderWidth: 1, borderColor: t.line }}><Text>{emoji}</Text></Pressable>)}
     </View> : null}
     <Notice error text={error} />
     {copied && <Text accessibilityLiveRegion="polite" style={{color:t.muted,fontSize:12,textAlign:mine?"right":"left"}}>{tr("Copied")}</Text>}
@@ -187,3 +203,5 @@ export function MessageBubble({ message, client, conversationId, serverId, bot, 
 
   </View>;
 }
+
+export const MessageBubble = memo(MessageBubbleView);

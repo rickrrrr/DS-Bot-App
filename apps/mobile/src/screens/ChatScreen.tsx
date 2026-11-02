@@ -385,8 +385,8 @@ export function ChatScreen({
           <View style={{ flex: 1, justifyContent: "flex-end", paddingVertical: 22, gap: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
               {room && <RoomAvatar room={room} team={team} size={24} />}
-              <View style={{ flex: 1, backgroundColor: t.bubble, borderRadius: 18, paddingVertical: 9, paddingHorizontal: 12 }}>
-                <Text style={{ color: t.ink, fontSize: 14, lineHeight: 22 }}>{bot?.waiting ? tr("Hi, I'm ") + bot.name + tr(". Pick a model for me first. You can change it later in my details.") : room ? tr("Message the group, or @mention a Bot to bring it into the conversation.") : tr("Message ") + conversation.name + tr(" to get started.")}</Text>
+              <View style={{ flex: 1, paddingVertical: 4, paddingHorizontal: 2 }}>
+                <Text style={{ color: t.muted, fontSize: 16, lineHeight: 24 }}>{bot?.waiting ? tr("Hi, I'm ") + bot.name + tr(". Pick a model for me first. You can change it later in my details.") : room ? tr("Message the group, or @mention a Bot to bring it into the conversation.") : tr("Message ") + conversation.name + tr(" to get started.")}</Text>
               </View>
             </View>
             {bot?.waiting ? <View style={{ marginLeft: 32, gap: 8 }}>
@@ -479,10 +479,10 @@ export function ChatScreen({
       <View
         pointerEvents="box-none"
         style={{
-          paddingHorizontal: 20,
-          paddingTop: 6,
-          paddingBottom: keyboardVisible ? 8 : insets.bottom + 8,
-          gap: 9,
+          paddingHorizontal: 14,
+          paddingTop: 8,
+          paddingBottom: keyboardVisible ? 10 : insets.bottom + 10,
+          gap: 8,
         }}
       >
         <Notice capsule error text={sideError || chat.error} />
@@ -539,11 +539,11 @@ export function ChatScreen({
               backgroundColor: "transparent",
               borderColor: t.line,
               borderWidth: 0,
-              textAlignVertical: "top",
-              paddingHorizontal: 12,
+              textAlignVertical: "center",
+              paddingHorizontal: 8,
               paddingVertical: 10,
-              fontSize: 17,
-              lineHeight: 24,
+              fontSize: 16,
+              lineHeight: 22,
               includeFontPadding: false,
               minHeight: 44,
               maxHeight: 150,
@@ -551,7 +551,7 @@ export function ChatScreen({
               height: composer.text.length === 0 ? 44 : undefined,
             }}
           />
-          <IconButton primary brand size={44}
+          <IconButton primary brand size={40}
             name="send"
             label={chat.pending ? tr("Retry") : tr("Send")}
             disabled={

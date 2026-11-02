@@ -57,7 +57,7 @@ function ViewBody({ title, blueprint, interactive, disabled, answer }: { title: 
     }
     return <View key={key} style={{ gap: 8, flexShrink: 1, minWidth: node.type === "row" ? undefined : "100%" }}>{content}</View>;
   }
-  return <View style={{ gap: 12, padding: 12, marginVertical: 8, borderRadius: 14, borderWidth: 1, borderColor: t.line, backgroundColor: t.bubble }}>
+  return <View style={{ gap: 10, padding: 12, marginVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface }}>
     {!!title && <Label>{title}</Label>}
     {render(blueprint, "view")}
     {interactive && !answer && <Notice text={tr("Historical card. Use the current card in the conversation to answer.")} />}
